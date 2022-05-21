@@ -10,9 +10,14 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 ///
 /// See [ScrollablePositionedList]
 class StickyGroupedListView<T, E> extends StatefulWidget {
+  final Key? key;
+
   /// Items of which [itemBuilder] or [indexedItemBuilder] produce the list.
   final List<T> elements;
 
+  /// Widgets added at the end of the list, not affected by sorting
+  final List<T>? footerElements;
+  
   /// Defines which elements are grouped together.
   ///
   /// Function is called for each element in the list, when equal for two
@@ -130,11 +135,12 @@ class StickyGroupedListView<T, E> extends StatefulWidget {
   final double initialAlignment;
 
   /// Creates a [StickyGroupedListView].
-  const StickyGroupedListView({
-    super.key,
+  StickyGroupedListView({
+    this.key,
     required this.elements,
     required this.groupBy,
     required this.groupSeparatorBuilder,
+    this.footerElements,
     this.groupComparator,
     this.itemBuilder,
     this.indexedItemBuilder,
@@ -157,7 +163,8 @@ class StickyGroupedListView<T, E> extends StatefulWidget {
     this.initialAlignment = 0,
     this.initialScrollIndex = 0,
     this.shrinkWrap = false,
-  }) : assert(itemBuilder != null || indexedItemBuilder != null);
+  })  : assert(itemBuilder != null || indexedItemBuilder != null),
+        super(key: key);
 
   @override
   State<StatefulWidget> createState() => _StickyGroupedListViewState<T, E>();
@@ -165,12 +172,12 @@ class StickyGroupedListView<T, E> extends StatefulWidget {
 
 class _StickyGroupedListViewState<T, E>
     extends State<StickyGroupedListView<T, E>> {
-  final StreamController<int> _streamController = StreamController<int>();
+  StreamController<int> _streamController = StreamController<int>();
   late ItemPositionsListener _listener;
   late GroupedItemScrollController _controller;
   GlobalKey? _groupHeaderKey;
   List<T> _sortedElements = [];
-  final GlobalKey _key = GlobalKey();
+  GlobalKey _key = GlobalKey();
   int _topElementIndex = 0;
   RenderBox? _headerBox;
   RenderBox? _listBox;
@@ -195,7 +202,7 @@ class _StickyGroupedListViewState<T, E>
 
   @override
   Widget build(BuildContext context) {
-    _sortedElements = _sortElements();
+    this._sortedElements = _sortElements();
     var hiddenIndex = widget.reverse ? _sortedElements.length * 2 - 1 : 0;
     _isSeparator = widget.reverse ? (int i) => i.isOdd : (int i) => i.isEven;
 
@@ -296,7 +303,7 @@ class _StickyGroupedListViewState<T, E>
     List<T> elements = widget.elements;
     if (elements.isNotEmpty) {
       elements.sort((e1, e2) {
-        int? compareResult;
+        var compareResult;
         // compare groups
         if (widget.groupComparator != null) {
           compareResult =
@@ -306,24 +313,28 @@ class _StickyGroupedListViewState<T, E>
               .compareTo(widget.groupBy(e2) as Comparable);
         }
         // compare elements inside group
-        if (compareResult == null || compareResult == 0) {
+        if ((compareResult == null || compareResult == 0)) {
           if (widget.itemComparator != null) {
             compareResult = widget.itemComparator!(e1, e2);
           } else if (e1 is Comparable) {
             compareResult = e1.compareTo(e2);
           }
         }
-        return compareResult!;
+        return compareResult;
       });
     }
     if (widget.order == StickyGroupedListOrder.DESC) {
       elements = elements.reversed.toList();
     }
-    return elements;
+    if (widget.footerElements?.isNotEmpty??false) {
+      return [...elements, ...widget.footerElements!.toList()];
+    }else{
+      return elements;
+    }
   }
 
   Widget _showFixedGroupHeader(int index) {
-    if (widget.elements.isNotEmpty) {
+    if (widget.elements.length > 0) {
       _groupHeaderKey = GlobalKey();
       return Container(
         key: _groupHeaderKey,
@@ -392,5 +403,4 @@ class GroupedItemScrollController extends ItemScrollController {
 }
 
 /// Used to define the order of a [StickyGroupedListView].
-// ignore: constant_identifier_names
 enum StickyGroupedListOrder { ASC, DESC }
