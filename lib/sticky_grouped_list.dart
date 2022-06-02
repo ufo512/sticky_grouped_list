@@ -15,9 +15,13 @@ class StickyGroupedListView<T, E> extends StatefulWidget {
   /// Items of which [itemBuilder] or [indexedItemBuilder] produce the list.
   final List<T> elements;
 
-  /// Widgets added at the end of the list, not affected by sorting
+  ///ADDED
+  /// Items added at the end of the list, not affected by sorting
   final List<T>? footerElements;
-  
+
+  ///ADDED
+  /// Items added at the beggining of the list, not affected by sorting
+  final List<T>? elementsOnTop;
   /// Defines which elements are grouped together.
   ///
   /// Function is called for each element in the list, when equal for two
@@ -141,6 +145,7 @@ class StickyGroupedListView<T, E> extends StatefulWidget {
     required this.groupBy,
     required this.groupSeparatorBuilder,
     this.footerElements,
+    this.elementsOnTop,
     this.groupComparator,
     this.itemBuilder,
     this.indexedItemBuilder,
@@ -301,7 +306,7 @@ class _StickyGroupedListViewState<T, E>
 
   List<T> _sortElements() {
     List<T> elements = widget.elements;
-    if (elements.isNotEmpty) {
+    if (elements.isNotEmpty && widget.order != StickyGroupedListOrder.ORIGINAL) {
       elements.sort((e1, e2) {
         var compareResult;
         // compare groups
@@ -326,11 +331,15 @@ class _StickyGroupedListViewState<T, E>
     if (widget.order == StickyGroupedListOrder.DESC) {
       elements = elements.reversed.toList();
     }
-    if (widget.footerElements?.isNotEmpty??false) {
-      return [...elements, ...widget.footerElements!.toList()];
-    }else{
-      return elements;
+    List<T> list = [];
+    if (widget.elementsOnTop?.isNotEmpty??false) {
+      list.addAll(widget.elementsOnTop!.toList());
     }
+    list.addAll(elements);
+    if (widget.footerElements?.isNotEmpty??false) {
+      list.addAll(widget.footerElements!.toList());
+    }
+    return list;
   }
 
   Widget _showFixedGroupHeader(int index) {
@@ -403,4 +412,4 @@ class GroupedItemScrollController extends ItemScrollController {
 }
 
 /// Used to define the order of a [StickyGroupedListView].
-enum StickyGroupedListOrder { ASC, DESC }
+enum StickyGroupedListOrder { ASC, DESC, ORIGINAL}
